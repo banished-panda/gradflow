@@ -39,6 +39,14 @@ class Tensor:
         other = other if isinstance(other, Tensor) else Tensor(other)
         result = Tensor(self._data * other._data)
         result._operands = set((self, other))
+
+        def flowgrad():
+            grad_self = other._data * result._grad
+            grad_other = self._data * result._grad
+            self._grad += Tensor._reverse_brodcast_grads(grad_self, self._grad.ndim)
+            other._grad += Tensor._reverse_brodcast_grads(grad_other, other._grad.ndim)
+        result._flowgrad = flowgrad
+
         return result
     
     def __rmul__(self, other):
@@ -47,7 +55,14 @@ class Tensor:
     def __pow__(self, other):
         assert isinstance(other, (int, float)), "Support powers of int/float only"
         result = Tensor(self._data ** other)
-        result._operands = set((self, other))
+        result._operands = set((self,))
+
+        def flowgrad():
+            local_grad = other * self._data**(other-1) 
+            grad = result._grad * local_grad
+            self._grad += Tensor._reverse_brodcast_grads(grad, self._grad.ndim)
+        result._flowgrad = flowgrad
+
         return result
     
     def __neg__(self):
@@ -99,4 +114,3 @@ class Tensor:
         while grad.ndim != to_dim:
             grad = grad.sum(axis=0)
         return grad
-    

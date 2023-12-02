@@ -92,3 +92,50 @@ def test_backward_add():
     assert np.all(da == da_tf)
     assert np.all(db == db_tf)
     assert np.all(dx == dx_tf)
+
+def test_backward_mult():
+    A = [[1.0, 2.0], [3.0, 4.0]]
+    B = [[4.0, 5.0], [3.0, 1.0]]
+    a = Tensor(A, "A")
+    b = Tensor(B, "B")
+    x = Tensor(1.0, "X")
+    c = a * b
+    c *= c * 7
+    c *= x
+    c.backward()
+    da, db, dx = a.grad(), b.grad(), x.grad()
+    C = c.numpy()
+
+    a = tf.Variable(A)
+    b = tf.Variable(B)
+    x = tf.Variable(1.0)
+    with tf.GradientTape() as tape:
+        c = a * b
+        c *= c * 7
+        c *= x
+    grads = tape.gradient(c, [a,b,x])
+    da_tf = grads[0].numpy()
+    db_tf = grads[1].numpy()
+    dx_tf = grads[2].numpy()
+
+    assert np.all(C == c.numpy())
+
+    print(da,'\n----------\n',da_tf)
+    assert np.all(da == da_tf)
+    assert np.all(db == db_tf)
+    assert np.all(dx == dx_tf)
+
+def test_pow_backward():
+    A = [[1.0, 2.0], [3.0, 4.0]]
+    a = Tensor(A, "A")
+    z = a ** 3.3
+    z.backward()
+    da = a.grad()
+
+    a = tf.Variable(A)
+    with tf.GradientTape() as tape:
+        z = a ** 3.3
+    da_tf = tape.gradient(z, a).numpy()
+
+    print(da,'\n----------\n',da_tf)
+    assert abs(np.var(da - da_tf)) < 1e-8
