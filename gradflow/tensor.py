@@ -84,6 +84,11 @@ class Tensor:
         other = other if isinstance(other, Tensor) else Tensor(other)
         result = Tensor(self._data @ other._data)
         result._operands = set((self, other))
+
+        def flowgrad():
+            self._grad += result._grad @ np.transpose(other._data)
+            other._grad += np.transpose(self._data) @ result._grad
+        result._flowgrad = flowgrad
         return result
     
     def numpy(self) -> np.ndarray:

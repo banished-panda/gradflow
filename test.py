@@ -139,3 +139,22 @@ def test_pow_backward():
 
     print(da,'\n----------\n',da_tf)
     assert abs(np.var(da - da_tf)) < 1e-8
+
+def test_matmul_back():
+    A = [[1.0, 2.0], [3.0, 4.0]]
+    B = [[4.0, 5.0], [3.0, 1.0]]
+    a = Tensor(A, "A")
+    b = Tensor(B, "B")
+    M = a @ b
+    M.backward()
+    da, db = a.grad(), b.grad()
+
+    a = tf.Variable(A)
+    b = tf.Variable(B)
+    with tf.GradientTape() as tape:
+        M = a @ b
+    grads = tape.gradient(M, [a, b])
+    da_tf = grads[0].numpy()
+    db_tf = grads[1].numpy()
+    assert np.all(da == da_tf)
+    assert np.all(db == db_tf)
