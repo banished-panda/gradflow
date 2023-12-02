@@ -1,4 +1,5 @@
 from gradflow.tensor import *
+import tensorflow as tf
 
 import numpy as np
 
@@ -62,3 +63,32 @@ def test_forward_matmul():
     # C2 = A @ C       -> not allowed as numpy doesn't know how to handle Tensor
     assert np.all(res==C0.numpy())
     assert np.all(res==C1.numpy())
+
+def test_backward_add():
+    A = [[1.0, 2.0], [3.0, 4.0]]
+    B = [[4.0, 5.0], [3.0, 1.0]]
+    a = Tensor(A, "A")
+    b = Tensor(B, "B")
+    x = Tensor(1.0, "X")
+    c = a + b
+    c += c + 7
+    c += x
+    c.backward()
+    da, db, dx = a.grad(), b.grad(), x.grad()
+    assert np.all(da == db)
+
+    a = tf.Variable(A)
+    b = tf.Variable(B)
+    x = tf.Variable(1.0)
+    with tf.GradientTape() as tape:
+        c = a + b
+        c += c + 7
+        c += x
+    grads = tape.gradient(c, [a,b,x])
+    da_tf = grads[0].numpy()
+    db_tf = grads[1].numpy()
+    dx_tf = grads[2].numpy()
+
+    assert np.all(da == da_tf)
+    assert np.all(db == db_tf)
+    assert np.all(dx == dx_tf)
