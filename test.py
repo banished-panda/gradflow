@@ -169,3 +169,25 @@ def test_matmul_back():
     db_tf = grads[1].numpy()
     assert np.all(da == da_tf)
     assert np.all(db == db_tf)
+
+def test_backward_indexing():
+    L = [[1, 2, 3], [4, 5, 6], [7 , 8, 9]]
+    A1 = Tensor(L)
+    A1 += 7
+    A2 = Tensor(L)
+    a = A2[0] + 7
+    b = A2[1] + 7
+    c = A2[2] + 7
+    B = Tensor(np.zeros((3, 3), dtype=float))
+    B[0] = a
+    B[1] = b
+    B[2] = c
+    matrix = np.array(L) + 1
+    C1 = A1 @ matrix
+    C2 = B @ matrix
+    C1.backward()
+    C2.backward()
+    d1 = A1.grad()
+    d2 = A2.grad()
+    assert np.all(C1.numpy() == C2.numpy())
+    assert np.all(d1 == d2)

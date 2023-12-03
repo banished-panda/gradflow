@@ -103,6 +103,11 @@ class Tensor:
         result = Tensor(self._data[index])
         result._operands = set((self, ))
         self._next.add(result)
+
+        def flowgrad():
+            self._grad[index] += result._grad
+        result._flowgrad = flowgrad
+
         return result
     
     def __setitem__(self, key, new_value):
@@ -119,11 +124,17 @@ class Tensor:
             v._operands.add(old_self)
         # completely reform self
         self._data[key] = new_value._data
-        self._flowgrad = [None]
         self._operands=set((old_self, new_value))
         self._next = set()
         old_self._next.add(self)
         new_value._next.add(self)
+
+        def flowgrad():
+            new_value._grad += self._grad[key]
+            tmp = self._grad.copy()
+            tmp[key] = 0
+            old_self._grad += tmp
+        self._flowgrad = flowgrad
     
     def numpy(self) -> np.ndarray:
         return self._data
