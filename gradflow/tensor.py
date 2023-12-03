@@ -136,6 +136,43 @@ class Tensor:
             old_self._grad += tmp
         self._flowgrad = flowgrad
     
+    def reduce_sum(self):
+        result = Tensor(self._data.sum())
+        result._operands = set((self, ))
+        self._next.add(result)
+
+        def flowgrad():
+            self._grad += np.ones_like(self.grad) * result._grad
+        result._flowgrad = flowgrad
+
+        return result
+    
+    def reduce_mean(self):
+        sum = self.reduce_sum()
+        return sum / self._data.size
+    
+    def exp(self):
+        result = Tensor(np.exp(self._data))
+        result._operands = set((self, ))
+        self._next.add(result)
+
+        def flowgrad():
+            self._grad += result._data * result._grad
+        result._flowgrad = flowgrad
+
+        return result
+    
+    def log(self):
+        result = Tensor(np.log(self._data))
+        result._operands = set((self, ))
+        self._next.add(result)
+
+        def flowgrad():
+            self._grad += (1 / self._data) * result._grad
+        result._flowgrad = flowgrad
+
+        return result
+    
     def numpy(self) -> np.ndarray:
         return self._data
     

@@ -191,3 +191,58 @@ def test_backward_indexing():
     d2 = A2.grad()
     assert np.all(C1.numpy() == C2.numpy())
     assert np.all(d1 == d2)
+
+def test_ops1():
+    '''
+    Test operations: reduce_sum, reduce_mean, exp, log
+    '''
+    L = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0 , 8.0, 9.0]]
+    A = Tensor(L)
+    A1 = A.log()
+    A2 = A1 - 1
+    A3 = A2.exp()
+    b = A3.reduce_sum()
+    c = A3.reduce_mean()
+    d = b - c
+    d.backward()
+    dA = A.grad()
+    dA1 = A1.grad()
+    dA2 = A2.grad()
+    dA3 = A3.grad()
+    db = b.grad()
+    dc = c.grad()
+
+    A_tf = tf.Variable(L)
+    with tf.GradientTape() as tape:
+        A1_tf = tf.math.log(A_tf)
+        A2_tf = A1_tf - 1
+        A3_tf = tf.math.exp(A2_tf)
+        b_tf = tf.reduce_sum(A3_tf)
+        c_tf = tf.reduce_mean(A3_tf)
+        d_tf = b_tf - c_tf
+    grads = tape.gradient(d_tf, [A_tf, A1_tf, A2_tf, A3_tf, b_tf, c_tf])
+    dA_tf = grads[0].numpy()
+    dA1_tf = grads[1].numpy()
+    dA2_tf = grads[2].numpy()
+    dA3_tf = grads[3].numpy()
+    db_tf = grads[4].numpy()
+    dc_tf = grads[5].numpy()
+
+    def comp(x, y):
+        print(x,'\n<------->\n',y)
+        assert abs(np.var(x - y)) < 1e-8 
+
+    comp(A.numpy(), A_tf.numpy())
+    comp(A1.numpy(), A1_tf.numpy())
+    comp(A2.numpy(), A2_tf.numpy())
+    comp(A3.numpy(), A3_tf.numpy())
+    comp(b.numpy(), b_tf.numpy())
+    comp(c.numpy(), c_tf.numpy())
+    comp(d.numpy(), d_tf.numpy())
+    
+    comp(dc, dc_tf)    
+    comp(db, db_tf)
+    comp(dA3, dA3_tf)
+    comp(dA2, dA2_tf)
+    comp(dA1, dA1_tf)
+    comp(dA, dA_tf)
