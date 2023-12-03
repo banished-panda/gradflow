@@ -64,6 +64,17 @@ def test_forward_matmul():
     assert np.all(res==C0.numpy())
     assert np.all(res==C1.numpy())
 
+def test_forward_indexing():
+    L = [[1, 2, 3], [4, 5, 6], [7 , 8, 9]]
+    A = np.array(L)
+    B = A[:2, :2]
+    C = Tensor(L)
+    D = C[:2, :2]
+    assert np.all(B==D.numpy())
+    A[1:, 1:] = B
+    C[1:, 1:] = D
+    assert np.all(A==C.numpy())
+
 def test_backward_add():
     A = [[1.0, 2.0], [3.0, 4.0]]
     B = [[4.0, 5.0], [3.0, 1.0]]

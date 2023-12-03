@@ -12,7 +12,8 @@ class Tensor:
         count = counter()
         self._data = np.array(data)
         self._name = f'tensor{count}' if name == None else name
-        self._operands = set()
+        self._operands = set()  # list of tensor that are used to calcualte this tensor
+        self._next = set()      # list of tensor that use this tensor for calculations
         self._grad = np.zeros_like(self._data, dtype=float)
         self._flowgrad = lambda : None  # function to flow grad to operands
     
@@ -23,6 +24,8 @@ class Tensor:
         other = other if isinstance(other, Tensor) else Tensor(other)
         result = Tensor(self._data + other._data)
         result._operands = set((self, other))
+        self._next.add(result)
+        other._next.add(result)
 
         def flowgrad():
             grad = result._grad
@@ -39,6 +42,8 @@ class Tensor:
         other = other if isinstance(other, Tensor) else Tensor(other)
         result = Tensor(self._data * other._data)
         result._operands = set((self, other))
+        self._next.add(result)
+        other._next.add(result)
 
         def flowgrad():
             grad_self = other._data * result._grad
@@ -56,6 +61,7 @@ class Tensor:
         assert isinstance(other, (int, float)), "Support powers of int/float only"
         result = Tensor(self._data ** other)
         result._operands = set((self,))
+        self._next.add(result)
 
         def flowgrad():
             local_grad = other * self._data**(other-1) 
@@ -84,12 +90,40 @@ class Tensor:
         other = other if isinstance(other, Tensor) else Tensor(other)
         result = Tensor(self._data @ other._data)
         result._operands = set((self, other))
+        self._next.add(result)
+        other._next.add(result)
 
         def flowgrad():
             self._grad += result._grad @ np.transpose(other._data)
             other._grad += np.transpose(self._data) @ result._grad
         result._flowgrad = flowgrad
         return result
+    
+    def __getitem__(self, index):
+        result = Tensor(self._data[index])
+        result._operands = set((self, ))
+        self._next.add(result)
+        return result
+    
+    def __setitem__(self, key, new_value):
+        new_value = new_value if isinstance(new_value, Tensor) else Tensor(new_value)
+        # Prevent formation of Cyclic graphs
+        # ==> create a separate Tensor for old version of self
+        old_self = Tensor(self._data)
+        old_self._name += (':'+self._name+'OLD')
+        old_self._flowgrad = self._flowgrad
+        old_self._operands = self._operands
+        old_self._next = self._next.copy()
+        for v in old_self._next:
+            v._operands.remove(self)
+            v._operands.add(old_self)
+        # completely reform self
+        self._data[key] = new_value._data
+        self._flowgrad = [None]
+        self._operands=set((old_self, new_value))
+        self._next = set()
+        old_self._next.add(self)
+        new_value._next.add(self)
     
     def numpy(self) -> np.ndarray:
         return self._data
