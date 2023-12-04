@@ -173,6 +173,37 @@ class Tensor:
 
         return result
     
+    def tanh(self):
+        result = Tensor(np.tanh(self._data))
+        result._operands = set((self, ))
+        self._next.add(result)
+
+        def flowgrad():
+            local_grad = 1 - result._data ** 2
+            self._grad += result._grad * local_grad
+        result._flowgrad = flowgrad
+
+        return result
+    
+    def relu(self):
+        positive = np.array(self._data > 0, dtype=int)
+        result = Tensor(self._data * positive)
+        result._operands = set((self, ))
+        self._next.add(result)
+
+        def flowgrad():
+            self._grad += result._grad * positive
+        result._flowgrad = flowgrad
+
+        return result
+    
+    def reset(self):
+        '''Resets gradient and references to other Tensors'''
+        self._grad = np.zeros_like(self._data, dtype=float)
+        self._operands = set()
+        self._next = set()
+        self._flowgrad = lambda : None
+    
     def numpy(self) -> np.ndarray:
         return self._data
     
