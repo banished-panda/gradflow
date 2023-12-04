@@ -210,7 +210,7 @@ class Tensor:
     def grad(self):
         return self._grad
     
-    def backward(self):
+    def backward(self, deleteGraph=True):
         # Perform topological sort to get linear ordering of vertices
         topo = []
         visited = set()
@@ -225,6 +225,12 @@ class Tensor:
         self._grad = np.ones_like(self._data, dtype=float)
         for v in reversed(topo):
             v._flowgrad()
+        
+        if deleteGraph:
+            for v in topo:
+                v._operands = set()
+                v._next = set()
+                self._flowgrad = lambda : None
 
     
     def _reverse_brodcast_grads(grad: np.ndarray, to_dim:int):
